@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chalkboard Target</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#173a5e;
+    --bg-edge:#0c2038;
+    --chalk:#eef4fb;
+    --chalk-dim:#9db3cc;
+    --amber:#ffce54;
+    --coral:#ef8a75;
+    --mint:#74d4e0;
+    --rule:rgba(238,244,251,.16);
+    --tray:rgba(238,244,251,.05);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'JetBrains Mono',monospace;
+    color:var(--chalk);
+    background:
+      radial-gradient(ellipse at 50% -10%, var(--bg) 0%, var(--bg-edge) 78%);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:32px 16px 60px;
+  }
+  .board{
+    width:100%;
+    max-width:640px;
+    position:relative;
+  }
+  /* chalk dust texture */
+  .board::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background-image:
+      radial-gradient(circle at 12% 22%, rgba(238,244,251,.035) 0, transparent 2px),
+      radial-gradient(circle at 78% 12%, rgba(238,244,251,.03) 0, transparent 2px),
+      radial-gradient(circle at 34% 82%, rgba(238,244,251,.03) 0, transparent 2px),
+      radial-gradient(circle at 88% 68%, rgba(238,244,251,.035) 0, transparent 2px);
+    background-size:180px 180px;
+    pointer-events:none;
+  }
+  header{text-align:center;margin-bottom:22px;}
+  h1{
+    font-family:'Kalam',cursive;
+    font-weight:700;
+    font-size:2.6rem;
+    margin:0 0 4px;
+    letter-spacing:.5px;
+    transform:rotate(-1deg);
+  }
+  .sub{
+    color:var(--chalk-dim);
+    font-size:.85rem;
+    letter-spacing:.06em;
+  }
+
+  .rule-line{border:none;border-top:2px dashed var(--rule);margin:22px 0;}
+
+  /* difficulty menu */
+  .menu{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    margin-bottom:18px;
+    flex-wrap:wrap;
+  }
+  .menu-btn{
+    font-family:'Kalam',cursive;
+    font-size:1rem;
+    background:transparent;
+    border:2px dashed var(--rule);
+    color:var(--chalk-dim);
+    padding:8px 22px;
+    border-radius:999px;
+    cursor:pointer;
+    transition:.12s;
+  }
+  .menu-btn:hover{color:var(--chalk);border-color:var(--chalk-dim);}
+  .menu-btn.active{
+    border-style:solid;
+    border-color:var(--amber);
+    color:var(--amber);
+    background:rgba(255,206,84,.1);
+  }
+  .menu-btn[data-lvl="hard"].active{border-color:var(--coral);color:var(--coral);background:rgba(239,138,117,.1);}
+  .menu-btn[data-lvl="medium"].active{border-color:var(--mint);color:var(--mint);background:rgba(116,212,224,.1);}
+  .menu-hint{
+    text-align:center;
+    color:var(--chalk-dim);
+    font-size:.72rem;
+    margin:-10px 0 18px;
+  }
+
+  /* target + settings row */
+  .top-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  .target-box{
+    text-align:center;
+  }
+  .target-box .label{
+    font-family:'Kalam',cursive;
+    color:var(--chalk-dim);
+    font-size:.95rem;
+  }
+  .target-box .value{
+    font-size:3rem;
+    font-weight:700;
+    color:var(--amber);
+    line-height:1;
+    text-shadow:0 0 18px rgba(255,206,84,.35);
+  }
+  .target-box input{
+    width:70px;
+    text-align:center;
+    font-family:'JetBrains Mono',monospace;
+    font-size:1.4rem;
+    font-weight:700;
+    color:var(--amber);
+    background:transparent;
+    border:none;
+    border-bottom:2px dashed var(--rule);
+    outline:none;
+  }
+  .target-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+  }
+  .shuffle-btn{
+    background:transparent;
+    border:1.5px dashed var(--rule);
+    color:var(--chalk-dim);
+    border-radius:8px;
+    width:30px;height:30px;
+    cursor:pointer;
+    font-size:.95rem;
+    line-height:1;
+    transition:.12s;
+  }
+  .shuffle-btn:hover{color:var(--amber);border-color:var(--amber);}
+  .target-mode{
+    font-size:.65rem;
+    color:var(--chalk-dim);
+    letter-spacing:.05em;
+    margin-top:2px;
+  }
+
+  .settings{
+    background:var(--tray);
+    border:1.5px dashed var(--rule);
+    border-radius:10px;
+    padding:12px 16px;
+    font-size:.78rem;
+    min-width:210px;
+  }
+  .settings .cap{
+    font-family:'Kalam',cursive;
+    font-size:.95rem;
+    color:var(--chalk-dim);
+    margin-bottom:6px;
+  }
+  .toggle-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:3px 0;
+    gap:10px;
+  }
+  .toggle-row label{cursor:pointer;color:var(--chalk);}
+  .switch{
+    position:relative;
+    width:34px;height:18px;
+    flex:0 0 auto;
+  }
+  .switch input{opacity:0;width:0;height:0;}
+  .slider{
+    position:absolute;inset:0;
+    background:rgba(244,241,230,.15);
+    border:1px solid var(--rule);
+    border-radius:20px;
+    cursor:pointer;
+    transition:.15s;
+  }
+  .slider::before{
+    content:"";
+    position:absolute;
+    height:12px;width:12px;
+    left:2px;top:2px;
+    background:var(--chalk-dim);
+    border-radius:50%;
+    transition:.15s;
+  }
+  .switch input:checked + .slider{background:rgba(255,206,84,.3);border-color:var(--amber);}
+  .switch input:checked + .slider::before{transform:translateX(16px);background:var(--amber);}
+
+  /* status bar */
+  .status-bar{
+    display:flex;
+    justify-content:center;
+    gap:26px;
+    margin:20px 0 10px;
+    font-size:.85rem;
+    color:var(--chalk-dim);
+    flex-wrap:wrap;
+  }
+  .status-bar span b{color:var(--chalk);font-size:1rem;}
+  #timerWrap{display:none;}
+  #timerWrap.show{display:inline;}
+  #timerVal.low{color:var(--coral);}
+
+  /* tiles */
+  .tray{
+    display:flex;
+    justify-content:center;
+    gap:18px;
+    flex-wrap:wrap;
+    margin:26px 0 18px;
+    min-height:96px;
+  }
+  .tile{
+    width:82px;height:82px;
+    border-radius:50%;
+    border:3px dashed var(--chalk-dim);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:1.6rem;
+    font-weight:700;
+    cursor:pointer;
+    user-select:none;
+    background:transparent;
+    position:relative;
+    transition:transform .12s, border-color .12s, color .12s, box-shadow .12s;
+  }
+  .tile:nth-child(4n+1){transform:rotate(-2deg);}
+  .tile:nth-child(4n+2){transform:rotate(1.5deg);}
+  .tile:nth-child(4n+3){transform:rotate(-1deg);}
+  .tile:nth-child(4n+4){transform:rotate(2deg);}
+  .tile:hover{border-color:var(--chalk);}
+  .tile.sel-a{border-color:var(--amber);color:var(--amber);box-shadow:0 0 16px rgba(255,206,84,.35);transform:scale(1.06);}
+  .tile.sel-b{border-color:var(--mint);color:var(--mint);box-shadow:0 0 16px rgba(116,212,224,.35);transform:scale(1.06);}
+  .tile.merging{animation:puff .45s ease forwards;}
+  @keyframes puff{
+    0%{opacity:1;transform:scale(1);}
+    100%{opacity:0;transform:scale(.4) rotate(25deg);}
+  }
+  .tile.arrive{animation:arrive .35s ease;}
+  @keyframes arrive{
+    0%{opacity:0;transform:scale(.3);}
+    100%{opacity:1;transform:scale(1);}
+  }
+
+  /* operators */
+  .op-row{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    margin:14px 0;
+    min-height:46px;
+    flex-wrap:wrap;
+  }
+  .op-btn{
+    width:50px;height:44px;
+    border-radius:8px;
+    border:2px solid var(--rule);
+    background:transparent;
+    color:var(--chalk);
+    font-family:'JetBrains Mono',monospace;
+    font-size:1.15rem;
+    cursor:pointer;
+    transition:.12s;
+  }
+  .op-btn:hover:not(:disabled){border-color:var(--amber);color:var(--amber);}
+  .op-btn:disabled{opacity:.25;cursor:not-allowed;}
+  .swap-btn{
+    background:transparent;
+    border:2px dashed var(--rule);
+    color:var(--chalk-dim);
+    border-radius:8px;
+    padding:0 14px;
+    height:44px;
+    cursor:pointer;
+    font-size:.85rem;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .swap-btn:hover{color:var(--chalk);border-color:var(--chalk);}
+
+  /* trail */
+  .trail{
+    text-align:center;
+    min-height:24px;
+    color:var(--chalk-dim);
+    font-size:.85rem;
+    letter-spacing:.02em;
+    margin-bottom:6px;
+  }
+  .trail span{color:var(--amber);}
+
+  /* message */
+  .message{
+    text-align:center;
+    font-family:'Kalam',cursive;
+    font-size:1.25rem;
+    min-height:34px;
+    margin:6px 0 4px;
+  }
+  .message.win{color:var(--mint);}
+  .message.lose{color:var(--coral);}
+
+  /* controls */
+  .controls{
+    display:flex;
+    justify-content:center;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-top:18px;
+  }
+  .btn{
+    font-family:'Kalam',cursive;
+    font-size:1rem;
+    background:transparent;
+    border:2px solid var(--chalk-dim);
+    color:var(--chalk);
+    padding:8px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:.12s;
+  }
+  .btn:hover{border-color:var(--amber);color:var(--amber);}
+  .btn.primary{border-color:var(--amber);color:var(--amber);}
+  .btn.primary:hover{background:rgba(242,193,78,.12);}
+  .btn:disabled{opacity:.3;cursor:not-allowed;}
+
+  /* solutions reveal */
+  .solutions-wrap{text-align:center;margin:8px 0 4px;}
+  .reveal-btn{
+    font-family:'JetBrains Mono',monospace;
+    font-size:.75rem;
+    background:transparent;
+    border:1.5px dashed var(--rule);
+    color:var(--chalk-dim);
+    padding:6px 14px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:.12s;
+  }
+  .reveal-btn:hover:not(:disabled){color:var(--amber);border-color:var(--amber);}
+  .reveal-btn:disabled{opacity:.3;cursor:not-allowed;}
+  .solutions-panel{
+    display:none;
+    margin:10px auto 0;
+    max-width:480px;
+    max-height:170px;
+    overflow-y:auto;
+    text-align:left;
+    background:var(--tray);
+    border:1.5px dashed var(--rule);
+    border-radius:10px;
+    padding:4px 14px;
+    font-size:.78rem;
+    color:var(--chalk-dim);
+  }
+  .solutions-panel.open{display:block;}
+  .solutions-panel div{padding:5px 0;border-bottom:1px dashed var(--rule);}
+  .solutions-panel div:last-child{border-bottom:none;}
+  .solutions-panel .none{text-align:center;font-style:italic;padding:8px 0;}
+
+  footer{
+    text-align:center;
+    color:var(--chalk-dim);
+    font-size:.72rem;
+    margin-top:34px;
+    line-height:1.6;
+  }
+  footer b{color:var(--chalk);}
+</style>
+</head>
+<body>
+<div class="board">
+
+  <header>
+    <h1>Chalkboard Target</h1>
+    <div class="sub">tap two numbers, pick an operator, keep merging until one number's left</div>
+  </header>
+
+  <div class="menu" id="menu">
+    <button class="menu-btn" data-lvl="easy">easy</button>
+    <button class="menu-btn" data-lvl="medium">medium</button>
+    <button class="menu-btn" data-lvl="hard">hard</button>
+  </div>
+  <div class="menu-hint" id="menuHint"></div>
+
+  <div class="top-row">
+    <div class="target-box">
+      <div class="label">reach</div>
+      <div class="target-row">
+        <input id="targetInput" class="value" value="24" inputmode="numeric">
+        <button class="shuffle-btn" id="shuffleBtn" title="new random target">&#9856;</button>
+      </div>
+      <div class="target-mode" id="targetMode">random each round</div>
+    </div>
+    <div class="settings">
+      <div class="cap">hard mode</div>
+      <div class="toggle-row">
+        <label for="tglDiv">division</label>
+        <span class="switch"><input type="checkbox" id="tglDiv"><span class="slider"></span></span>
+      </div>
+      <div class="toggle-row">
+        <label for="tglExp">exponents</label>
+        <span class="switch"><input type="checkbox" id="tglExp"><span class="slider"></span></span>
+      </div>
+      <div class="toggle-row">
+        <label for="tglNeg">negative numbers</label>
+        <span class="switch"><input type="checkbox" id="tglNeg"><span class="slider"></span></span>
+      </div>
+      <div class="toggle-row">
+        <label for="tglTime">60s timer</label>
+        <span class="switch"><input type="checkbox" id="tglTime"><span class="slider"></span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <span>score <b id="scoreVal">0</b></span>
+    <span>streak <b id="streakVal">0</b></span>
+    <span>time <b id="liveTimer">0.0s</b></span>
+    <span>best <b id="bestTimeVal">&mdash;</b></span>
+    <span>ways <b id="waysVal">?</b></span>
+    <span id="timerWrap">clock <b id="timerVal">60</b></span>
+  </div>
+
+  <hr class="rule-line">
+
+  <div class="tray" id="tray"></div>
+
+  <div class="op-row" id="opRow"></div>
+
+  <div class="trail" id="trail"></div>
+  <div class="message" id="message"></div>
+
+  <div class="solutions-wrap" id="solutionsWrap">
+    <button class="reveal-btn" id="revealBtn">show all solutions</button>
+    <div class="solutions-panel" id="solutionsPanel"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="undoBtn">undo</button>
+    <button class="btn" id="hintBtn">hint (&minus;10)</button>
+    <button class="btn" id="giveUpBtn">reveal solution</button>
+    <button class="btn primary" id="newBtn">new puzzle</button>
+  </div>
+
+  <footer>
+    Combine any two chalk numbers with an operator to fold them into one.<br>
+    Do that until a single number remains &mdash; land it on <b>target</b> and the round's yours.<br>
+    Every starting number gets used exactly once, because every number becomes part of a merge.<br>
+    Pick <b>easy</b>, <b>medium</b>, or <b>hard</b> to change which rules and target range are in play &mdash;
+    or flip the switches yourself for a custom mix.
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const trayEl=$('tray'), opRowEl=$('opRow'), trailEl=$('trail'), messageEl=$('message');
+  const scoreEl=$('scoreVal'), streakEl=$('streakVal'), timerWrap=$('timerWrap'), timerEl=$('timerVal');
+  const targetInput=$('targetInput');
+  const tglDiv=$('tglDiv'), tglExp=$('tglExp'), tglNeg=$('tglNeg'), tglTime=$('tglTime');
+  const menuEl=$('menu'), menuHintEl=$('menuHint'), shuffleBtn=$('shuffleBtn'), targetModeEl=$('targetMode');
+  const liveTimerEl=$('liveTimer'), bestTimeEl=$('bestTimeVal'), waysEl=$('waysVal');
+  const revealBtn=$('revealBtn'), solutionsPanel=$('solutionsPanel');
+
+  const WAYS_CAP=200;
+
+  const DIFFICULTY = {
+    easy:   { division:false, exponent:false, negatives:false, timed:false, numMin:1, numMax:9,  targetMin:10, targetMax:20,
+              blurb:'plain +, −, × on small numbers, no clock' },
+    medium: { division:true,  exponent:false, negatives:false, timed:false, numMin:1, numMax:9,  targetMin:12, targetMax:36,
+              blurb:'division unlocked, wider target range' },
+    hard:   { division:true,  exponent:true,  negatives:true,  timed:true,  numMin:1, numMax:13, targetMin:10, targetMax:60,
+              blurb:'every rule on, bigger numbers, 60s clock' },
+  };
+
+  let level='easy';
+  let targetMode='random';   // 'random' follows the level's range · 'custom' is a typed-in value
+  let target=24;
+  let score=0, streak=0;
+  let tiles=[];          // {id, value, expr, hard}
+  let selA=null, selB=null;
+  let history=[];        // undo stack (snapshots of tiles)
+  let trailLog=[];
+  let roundOver=false;
+  let usedHardOpThisRound=false;
+  let timer=null, timeLeft=60;
+  let uidc=1;
+  let roundStartTs=0, liveTimerInterval=null;
+  let allSolutionExprs=[];
+
+  function settings(){
+    return {division:tglDiv.checked, exponent:tglExp.checked, negatives:tglNeg.checked, timed:tglTime.checked};
+  }
+
+  function applyDifficulty(lvl){
+    level=lvl;
+    targetMode='random';
+    const cfg=DIFFICULTY[lvl];
+    tglDiv.checked=cfg.division;
+    tglExp.checked=cfg.exponent;
+    tglNeg.checked=cfg.negatives;
+    tglTime.checked=cfg.timed;
+    [...menuEl.children].forEach(b=>b.classList.toggle('active', b.dataset.lvl===lvl));
+    menuHintEl.textContent=cfg.blurb;
+    targetModeEl.textContent='random each round';
+    startRound();
+  }
+
+  function fmt(v){
+    let r=Math.round(v*1000)/1000;
+    if(Object.is(r,-0)) r=0;
+    return Number.isInteger(r)?String(r):r.toFixed(3).replace(/0+$/,'').replace(/\.$/,'');
+  }
+
+  // ---------- solver ----------
+  function solve(values, exprs, hardFlags, tgt, s){
+    if(values.length===1){
+      return Math.abs(values[0]-tgt)<1e-6 ? {expr:exprs[0], hard:hardFlags[0]} : null;
+    }
+    for(let i=0;i<values.length;i++){
+      for(let j=i+1;j<values.length;j++){
+        const a=values[i], b=values[j], ea=exprs[i], eb=exprs[j];
+        const ha=hardFlags[i], hb=hardFlags[j];
+        const cands=[];
+        cands.push({v:a+b, e:`(${ea}+${eb})`, h:ha||hb});
+        cands.push({v:a*b, e:`(${ea}×${eb})`, h:ha||hb});
+        if(s.negatives || a-b>=-1e-9) cands.push({v:a-b, e:`(${ea}-${eb})`, h:ha||hb});
+        if(s.negatives || b-a>=-1e-9) cands.push({v:b-a, e:`(${eb}-${ea})`, h:ha||hb});
+        if(s.division){
+          if(Math.abs(b)>1e-9) cands.push({v:a/b, e:`(${ea}÷${eb})`, h:true});
+          if(Math.abs(a)>1e-9) cands.push({v:b/a, e:`(${eb}÷${ea})`, h:true});
+        }
+        if(s.exponent){
+          if(b>=0 && b<=6 && Math.abs(a)<=60) cands.push({v:Math.pow(a,b), e:`(${ea}^${eb})`, h:true});
+          if(a>=0 && a<=6 && Math.abs(b)<=60) cands.push({v:Math.pow(b,a), e:`(${eb}^${ea})`, h:true});
+        }
+        for(const c of cands){
+          if(!isFinite(c.v) || Math.abs(c.v)>1e6) continue;
+          const nv=values.filter((_,k)=>k!==i&&k!==j).concat([c.v]);
+          const ne=exprs.filter((_,k)=>k!==i&&k!==j).concat([c.e]);
+          const nh=hardFlags.filter((_,k)=>k!==i&&k!==j).concat([c.h]);
+          const res=solve(nv,ne,nh,tgt,s);
+          if(res) return res;
+        }
+      }
+    }
+    return null;
+  }
+
+  // finds every distinct way to reach the target, up to `cap` hits
+  function solveAll(values, exprs, hardFlags, tgt, s, out, cap){
+    if(out.length>=cap) return;
+    if(values.length===1){
+      if(Math.abs(values[0]-tgt)<1e-6) out.push({expr:exprs[0], hard:hardFlags[0]});
+      return;
+    }
+    for(let i=0;i<values.length;i++){
+      for(let j=i+1;j<values.length;j++){
+        const a=values[i], b=values[j], ea=exprs[i], eb=exprs[j];
+        const ha=hardFlags[i], hb=hardFlags[j];
+        const cands=[];
+        cands.push({v:a+b, e:`(${ea}+${eb})`, h:ha||hb});
+        cands.push({v:a*b, e:`(${ea}×${eb})`, h:ha||hb});
+        if(s.negatives || a-b>=-1e-9) cands.push({v:a-b, e:`(${ea}-${eb})`, h:ha||hb});
+        if(s.negatives || b-a>=-1e-9) cands.push({v:b-a, e:`(${eb}-${ea})`, h:ha||hb});
+        if(s.division){
+          if(Math.abs(b)>1e-9) cands.push({v:a/b, e:`(${ea}÷${eb})`, h:true});
+          if(Math.abs(a)>1e-9) cands.push({v:b/a, e:`(${eb}÷${ea})`, h:true});
+        }
+        if(s.exponent){
+          if(b>=0 && b<=6 && Math.abs(a)<=60) cands.push({v:Math.pow(a,b), e:`(${ea}^${eb})`, h:true});
+          if(a>=0 && a<=6 && Math.abs(b)<=60) cands.push({v:Math.pow(b,a), e:`(${eb}^${ea})`, h:true});
+        }
+        for(const c of cands){
+          if(out.length>=cap) return;
+          if(!isFinite(c.v) || Math.abs(c.v)>1e6) continue;
+          const nv=values.filter((_,k)=>k!==i&&k!==j).concat([c.v]);
+          const ne=exprs.filter((_,k)=>k!==i&&k!==j).concat([c.e]);
+          const nh=hardFlags.filter((_,k)=>k!==i&&k!==j).concat([c.h]);
+          solveAll(nv,ne,nh,tgt,s,out,cap);
+        }
+      }
+    }
+  }
+
+  // ---------- puzzle generation ----------
+  function randInt(lo,hi){return Math.floor(Math.random()*(hi-lo+1))+lo;}
+
+  function generatePuzzle(){
+    const s=settings();
+    const cfg=DIFFICULTY[level] || DIFFICULTY.easy;
+    let nums, found=false, tries=0;
+    while(tries<800 && !found){
+      tries++;
+      nums=[randInt(cfg.numMin,cfg.numMax),randInt(cfg.numMin,cfg.numMax),randInt(cfg.numMin,cfg.numMax),randInt(cfg.numMin,cfg.numMax)];
+      const r=solve(nums.slice(), nums.map(String), nums.map(()=>false), target, s);
+      if(r) found=true;
+    }
+    if(!found){ // fallback: widen range once
+      const hi=Math.max(cfg.numMax,13);
+      for(let t=0;t<2000 && !found;t++){
+        nums=[randInt(1,hi),randInt(1,hi),randInt(1,hi),randInt(1,hi)];
+        const r=solve(nums.slice(), nums.map(String), nums.map(()=>false), target, s);
+        if(r) found=true;
+      }
+    }
+    return nums;
+  }
+
+  // ---------- live timer ----------
+  function updateLiveTimer(){
+    if(roundOver) return;
+    const el=(Date.now()-roundStartTs)/1000;
+    liveTimerEl.textContent=el.toFixed(1)+'s';
+  }
+
+  // ---------- personal best (persisted via artifact storage) ----------
+  async function loadBestTime(lvl){
+    try{
+      const res=await window.storage.get(`bestTime:${lvl}`, false);
+      const t=res ? parseFloat(res.value) : NaN;
+      bestTimeEl.textContent = isFinite(t) ? t.toFixed(1)+'s' : '\u2014';
+    }catch(e){
+      bestTimeEl.textContent='\u2014';
+    }
+  }
+
+  async function maybeSaveBest(lvl, elapsed){
+    try{
+      let cur=null;
+      try{
+        const res=await window.storage.get(`bestTime:${lvl}`, false);
+        cur = res ? parseFloat(res.value) : null;
+      }catch(e){ cur=null; }
+      if(cur===null || !isFinite(cur) || elapsed<cur){
+        await window.storage.set(`bestTime:${lvl}`, String(elapsed), false);
+        bestTimeEl.textContent=elapsed.toFixed(1)+'s';
+        return true;
+      }
+      bestTimeEl.textContent=cur.toFixed(1)+'s';
+      return false;
+    }catch(e){
+      return false;
+    }
+  }
+
+  // ---------- round lifecycle ----------
+  function startRound(){
+    clearInterval(timer);
+    clearInterval(liveTimerInterval);
+    const cfg=DIFFICULTY[level] || DIFFICULTY.easy;
+    if(targetMode==='random'){
+      target=randInt(cfg.targetMin,cfg.targetMax);
+    } else {
+      target=parseInt(targetInput.value)||24;
+    }
+    targetInput.value=target;
+    const nums=generatePuzzle();
+    tiles=nums.map(v=>({id:uidc++, value:v, expr:String(v), hard:false}));
+    selA=selB=null;
+    history=[];
+    trailLog=[];
+    roundOver=false;
+    usedHardOpThisRound=false;
+    messageEl.textContent='';
+    messageEl.className='message';
+    render();
+
+    // ways-to-solve count, computed from the fresh set of numbers
+    const s=settings();
+    const solOut=[];
+    solveAll(nums.slice(), nums.map(String), nums.map(()=>false), target, s, solOut, WAYS_CAP);
+    allSolutionExprs=[...new Set(solOut.map(r=>r.expr))];
+    const capped=solOut.length>=WAYS_CAP;
+    waysEl.textContent = allSolutionExprs.length ? (allSolutionExprs.length+(capped?'+':'')) : '0';
+    solutionsPanel.classList.remove('open');
+    solutionsPanel.innerHTML='';
+    delete solutionsPanel.dataset.filled;
+    revealBtn.textContent='show all solutions';
+    revealBtn.disabled = allSolutionExprs.length===0;
+
+    // live solve-time tracking
+    roundStartTs=Date.now();
+    liveTimerEl.textContent='0.0s';
+    liveTimerInterval=setInterval(updateLiveTimer,100);
+    loadBestTime(level);
+
+    if(s.timed){
+      timeLeft=60;
+      timerWrap.classList.add('show');
+      timerEl.textContent=timeLeft;
+      timerEl.classList.remove('low');
+      timer=setInterval(()=>{
+        timeLeft--;
+        timerEl.textContent=timeLeft;
+        if(timeLeft<=10) timerEl.classList.add('low');
+        if(timeLeft<=0){
+          clearInterval(timer);
+          endRound(false, true);
+        }
+      },1000);
+    } else {
+      timerWrap.classList.remove('show');
+    }
+  }
+
+  function snapshot(){
+    history.push({tiles:JSON.parse(JSON.stringify(tiles)), trailLog:trailLog.slice()});
+  }
+
+  function render(){
+    trayEl.innerHTML='';
+    tiles.forEach(t=>{
+      const el=document.createElement('div');
+      el.className='tile';
+      if(selA && t.id===selA.id) el.classList.add('sel-a');
+      if(selB && t.id===selB.id) el.classList.add('sel-b');
+      el.textContent=fmt(t.value);
+      el.title=t.expr;
+      el.addEventListener('click',()=>onTileClick(t));
+      trayEl.appendChild(el);
+    });
+    renderOps();
+    trailEl.innerHTML = trailLog.length ? trailLog.map(x=>`<span>${x}</span>`).join('  ·  ') : (tiles.length>1 ? 'pick two numbers to merge' : '');
+    $('undoBtn').disabled = history.length===0 || roundOver;
+    $('hintBtn').disabled = roundOver;
+    $('giveUpBtn').disabled = roundOver;
+  }
+
+  function onTileClick(t){
+    if(roundOver) return;
+    if(selA && selA.id===t.id){ selA=null; render(); return; }
+    if(selB && selB.id===t.id){ selB=null; render(); return; }
+    if(!selA){ selA=t; }
+    else if(!selB){ selB=t; }
+    else { selA=t; selB=null; }
+    render();
+  }
+
+  function renderOps(){
+    opRowEl.innerHTML='';
+    if(!selA || !selB){ return; }
+    const s=settings();
+    const a=selA.value, b=selB.value;
+    const ops=[
+      {sym:'+', enabled:true, fn:()=>a+b, hard:false},
+      {sym:'−', enabled: s.negatives || a-b>=-1e-9, fn:()=>a-b, hard:false},
+      {sym:'×', enabled:true, fn:()=>a*b, hard:false},
+      {sym:'÷', enabled: s.division && Math.abs(b)>1e-9 && (s.negatives || a/b>=-1e-9), fn:()=>a/b, hard:true},
+      {sym:'^', enabled: s.exponent && b>=0 && b<=6 && Math.abs(a)<=60 && isFinite(Math.pow(a,b)) && Math.abs(Math.pow(a,b))<=1e6, fn:()=>Math.pow(a,b), hard:true},
+    ];
+    ops.forEach(op=>{
+      const btn=document.createElement('button');
+      btn.className='op-btn';
+      btn.textContent=op.sym;
+      btn.disabled=!op.enabled;
+      btn.addEventListener('click',()=>applyOp(op));
+      opRowEl.appendChild(btn);
+    });
+    const swap=document.createElement('button');
+    swap.className='swap-btn';
+    swap.textContent='swap order';
+    swap.addEventListener('click',()=>{ const tmp=selA; selA=selB; selB=tmp; render(); });
+    opRowEl.appendChild(swap);
+  }
+
+  function applyOp(op){
+    snapshot();
+    const val=op.fn();
+    const exprStr=`${selA.expr}${op.sym}${selB.expr}`;
+    trailLog.push(`${fmt(selA.value)} ${op.sym} ${fmt(selB.value)} = ${fmt(val)}`);
+    if(op.hard) usedHardOpThisRound=true;
+    tiles=tiles.filter(t=>t.id!==selA.id && t.id!==selB.id);
+    tiles.push({id:uidc++, value:val, expr:`(${exprStr})`, hard:op.hard});
+    selA=null; selB=null;
+    render();
+    if(tiles.length===1){
+      const hit=Math.abs(tiles[0].value-target)<1e-6;
+      endRound(hit,false);
+    }
+  }
+
+  function endRound(won, timedOut){
+    roundOver=true;
+    clearInterval(timer);
+    clearInterval(liveTimerInterval);
+    const elapsed=(Date.now()-roundStartTs)/1000;
+    liveTimerEl.textContent=elapsed.toFixed(1)+'s';
+    if(won){
+      streak++;
+      let base=100;
+      if(settings().timed) base += Math.max(0,timeLeft)*1;
+      if(usedHardOpThisRound) base += 25;
+      base += Math.min(streak,10)*5;
+      score += base;
+      messageEl.textContent = `${target}! nailed it — +${base}`;
+      messageEl.className='message win';
+      maybeSaveBest(level, elapsed).then(isNew=>{
+        if(isNew) messageEl.textContent += ` — new best! ${elapsed.toFixed(1)}s`;
+      });
+    } else {
+      streak=0;
+      messageEl.textContent = timedOut ? `time's up — chalk's down` : `${fmt(tiles[0].value)}, not ${target}. so close.`;
+      messageEl.className='message lose';
+    }
+    scoreEl.textContent=score;
+    streakEl.textContent=streak;
+    render();
+  }
+
+  function undo(){
+    if(!history.length || roundOver) return;
+    const snap=history.pop();
+    tiles=snap.tiles;
+    trailLog=snap.trailLog;
+    selA=selB=null;
+    render();
+  }
+
+  function hint(){
+    if(roundOver) return;
+    const s=settings();
+    const values=tiles.map(t=>t.value);
+    const exprs=tiles.map(t=>t.expr);
+    const hardFlags=tiles.map(t=>t.hard);
+    const res=solve(values,exprs,hardFlags,target,s);
+    if(!res){
+      messageEl.textContent='no path from here with current numbers — try undo';
+      messageEl.className='message lose';
+      return;
+    }
+    score=Math.max(0,score-10);
+    scoreEl.textContent=score;
+    // find first pairwise op used inside res.expr by re-deriving one legal move
+    const move=findOneMove(values,exprs,target,s);
+    messageEl.textContent = move ? `try: ${move}` : 'a path exists — keep combining';
+    messageEl.className='message';
+  }
+
+  function findOneMove(values,exprs,tgt,s){
+    for(let i=0;i<values.length;i++){
+      for(let j=i+1;j<values.length;j++){
+        const a=values[i], b=values[j], ea=exprs[i], eb=exprs[j];
+        const cands=[
+          {v:a+b,label:`${ea} + ${eb}`},
+          {v:a*b,label:`${ea} × ${eb}`},
+        ];
+        if(s.negatives||a-b>=-1e-9) cands.push({v:a-b,label:`${ea} − ${eb}`});
+        if(s.negatives||b-a>=-1e-9) cands.push({v:b-a,label:`${eb} − ${ea}`});
+        if(s.division){
+          if(Math.abs(b)>1e-9) cands.push({v:a/b,label:`${ea} ÷ ${eb}`});
+          if(Math.abs(a)>1e-9) cands.push({v:b/a,label:`${eb} ÷ ${ea}`});
+        }
+        if(s.exponent){
+          if(b>=0&&b<=6) cands.push({v:Math.pow(a,b),label:`${ea} ^ ${eb}`});
+          if(a>=0&&a<=6) cands.push({v:Math.pow(b,a),label:`${eb} ^ ${ea}`});
+        }
+        for(const c of cands){
+          if(!isFinite(c.v)||Math.abs(c.v)>1e6) continue;
+          const nv=values.filter((_,k)=>k!==i&&k!==j).concat([c.v]);
+          const ne=exprs.filter((_,k)=>k!==i&&k!==j).concat([String(c.v)]);
+          const nh=values.map(()=>false);
+          if(solve(nv,ne,nh.filter((_,k)=>k!==i&&k!==j).concat([false]),tgt,s)){
+            return c.label;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  function giveUp(){
+    if(roundOver) return;
+    const s=settings();
+    const values=tiles.map(t=>t.value);
+    const exprs=tiles.map(t=>t.expr);
+    const hardFlags=tiles.map(t=>t.hard);
+    const res=solve(values,exprs,hardFlags,target,s);
+    messageEl.textContent = res ? `${res.expr} = ${target}` : `no solution left from this state`;
+    messageEl.className='message lose';
+    streak=0;
+    streakEl.textContent=streak;
+    roundOver=true;
+    clearInterval(timer);
+    clearInterval(liveTimerInterval);
+    liveTimerEl.textContent=((Date.now()-roundStartTs)/1000).toFixed(1)+'s';
+    render();
+  }
+
+  $('newBtn').addEventListener('click',startRound);
+  $('undoBtn').addEventListener('click',undo);
+  $('hintBtn').addEventListener('click',hint);
+  $('giveUpBtn').addEventListener('click',giveUp);
+
+  revealBtn.addEventListener('click',()=>{
+    const isOpen=solutionsPanel.classList.toggle('open');
+    revealBtn.textContent = isOpen ? 'hide solutions' : 'show all solutions';
+    if(isOpen && !solutionsPanel.dataset.filled){
+      solutionsPanel.innerHTML = allSolutionExprs.length
+        ? allSolutionExprs.map(e=>`<div>${e} = ${target}</div>`).join('')
+        : '<div class="none">no solutions found for this puzzle</div>';
+      solutionsPanel.dataset.filled='1';
+    }
+  });
+
+  [...menuEl.children].forEach(btn=>{
+    btn.addEventListener('click',()=>applyDifficulty(btn.dataset.lvl));
+  });
+
+  shuffleBtn.addEventListener('click',()=>{
+    targetMode='random';
+    targetModeEl.textContent='random each round';
+    startRound();
+  });
+
+  targetInput.addEventListener('change',()=>{
+    targetMode='custom';
+    targetModeEl.textContent='custom target';
+    startRound();
+  });
+
+  // manual hard-mode toggles count as a custom mix — clear the active level pill
+  [tglDiv,tglExp,tglNeg,tglTime].forEach(t=>t.addEventListener('change',()=>{
+    [...menuEl.children].forEach(b=>b.classList.remove('active'));
+    menuHintEl.textContent='custom rule mix';
+    startRound();
+  }));
+
+  applyDifficulty('easy');
+})();
+</script>
+</body>
+</html>
